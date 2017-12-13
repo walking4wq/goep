@@ -19,6 +19,8 @@ Total 26 (delta 2), reused 0 (delta 0)
 remote: Resolving deltas: 100% (2/2), done.
 To https://github.com/walking4wq/goep.git
  + 0808d46...c68700c master -> master (forced update)
- 
- 
- 
+
+
+
+git init
+git pull https://github.com/walking4wq/goep/ master
