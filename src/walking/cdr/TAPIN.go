@@ -67,7 +67,8 @@ func (_ TAPIN) NewEvent(line []byte, pathFile string, linCnt int) (evt *Event, r
 	meta := map[string]int{"MT3": 397, "MO3": 224, "MOC": 296}
 	maxSize, ok := meta[record_type]
 	if !ok {
-		return nil, fmt.Sprintf("Parse[%d] record_type[%s] not found in:%v", linCnt, record_type, meta)
+		// return nil, fmt.Sprintf("Parse[%d] record_type[%s] not found in:%v", linCnt, record_type, meta)
+		return nil, "" // ignore this error
 	}
 	if size < maxSize {
 		return nil, fmt.Sprintf("Parse[%d] record_type[%s] size[%d] to short, want to %d",

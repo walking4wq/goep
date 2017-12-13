@@ -178,6 +178,12 @@ func (t *FileAdapter) IsRunning() bool {
 //}
 
 func (t *FileAdapter) Run() {
+	errSubDir := "err"
+	dataSubDir := "data"
+
+	hisSubDir := "his"
+	warnSubDir := "warn"
+
 	// go语言圣经#321 #327 #331 // 控制打开文件数
 	//	sema is a counting semaphore for limiting concurrency in file.WalkFn.
 	var sema = make(chan struct{}, t.openFiles)
@@ -195,11 +201,20 @@ func (t *FileAdapter) Run() {
 			go func(pathFile string, argEvt *cdr.Event) { // map
 				defer wg4file.Done()
 
-				errPathFile := fmt.Sprintf("%s%s.err", t.outputPath, filepath.Base(pathFile))
+				errPathFile := fmt.Sprintf("%s%s%c%s.%s", t.outputPath, errSubDir, os.PathSeparator, filepath.Base(pathFile), errSubDir)
 				w := file.NewWriter(errPathFile, t.maxCountPerFile, t.flushCntPerFile, t.maxDelayPerFile)
 				t.log.Info("new error file writer", "errWriter", *w)
 				go w.Run()
 				defer w.Close()
+
+				var w4w *file.Writer
+				if warnSubDir != "" {
+					warnPathFile := fmt.Sprintf("%s%s%c%s.%s", t.outputPath, warnSubDir, os.PathSeparator, filepath.Base(pathFile), warnSubDir)
+					w4w = file.NewWriter(warnPathFile, t.maxCountPerFile, t.flushCntPerFile, t.maxDelayPerFile)
+					t.log.Info("new warn file writer", "errWriter", *w)
+					go w4w.Run()
+					defer w4w.Close()
+				}
 
 				t.log.Info("begin process", "pathFile", pathFile)
 				file.ReadLine(pathFile, t.rejectLimit, func(line []byte, pathFile string, linCnt, errCnt int) (err error) {
@@ -210,6 +225,14 @@ func (t *FileAdapter) Run() {
 						// err = fmt.Errorf(row4err)
 						w.Write(row4err)
 						err = errors.New(row4err)
+						return
+					}
+					if evt == nil {
+						//t.log.Trace("ignore line", "line", string(line), "pathFile", pathFile, "linCnt",
+						//	linCnt, "errCnt", errCnt)
+						if w4w != nil {
+							w4w.Write(fmt.Sprintf("%08d>%s", linCnt, string(line)))
+						}
 						return
 					}
 					t.evts <- evt
@@ -230,6 +253,30 @@ func (t *FileAdapter) Run() {
 		wg4file.Wait()
 		close(sizes)
 		close(t.evts)
+
+		if hisSubDir != "" {
+			// hisPath := fmt.Sprintf("%s%s%c%s", t.outputPath, hisSubDir, os.PathSeparator, filepath.Base(t.rootPath))
+			hisPath := fmt.Sprintf("%s%s", t.outputPath, hisSubDir)
+			t.log.Info("try to Rename rootPath to hisPath ...", "rootPath", t.rootPath, "hisPath", hisPath)
+			//err := os.MkdirAll(hisPath, 0666)
+			//if err != nil {
+			//	goto rm
+			//}
+			err := os.Rename(t.rootPath, hisPath)
+			if err != nil {
+				goto rm
+			}
+			goto outterIfHisSubDir
+		rm:
+			t.log.Warn("try to Rename rootPath to hisPath failure",
+				"rootPath", t.rootPath, "hisPath", hisPath, "err", err)
+			err = os.RemoveAll(t.rootPath)
+			if err != nil {
+				t.log.Error("RemoveAll rootPath to hisPath failure", "rootPath", t.rootPath, "err", err)
+			}
+		}
+	outterIfHisSubDir:
+
 		//close(t.errs)
 		// close(t.outEvts)
 		//close(t.outErrs)
@@ -298,7 +345,7 @@ func (t *FileAdapter) Run() {
 						// pathFile = pathFile - t.rootPath + t.outputPath + reflect.ValueOf(argEvt).Type().String()
 						// errPathFile := strings.Replace(pathFile, t.rootPath, t.outputPath, 1) + reflect.ValueOf(*argEvt).Type().String()
 						// outputPathFile := fmt.Sprintf("%s%s.dsv", t.outputPath, reflect.ValueOf(v[0]).Type().String())
-						outputPathFile := fmt.Sprintf("%s%s.dsv", t.outputPath, k)
+						outputPathFile := fmt.Sprintf("%s%s%c%s.dsv", t.outputPath, dataSubDir, os.PathSeparator, k)
 						w = file.NewWriter(outputPathFile, t.maxCountPerFile, t.flushCntPerFile, t.maxDelayPerFile)
 						t.log.Info("new output file writer", "writer", *w)
 						go w.Run()
