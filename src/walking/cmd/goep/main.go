@@ -56,7 +56,7 @@ func main() {
 | ------rwx  | 0007 | Other |
 +------------+------+-------+
 		*/
-		os.Mkdir(dirName, 0666)
+		os.Mkdir(dirName, 0777) // 0666)
 	}
 	path := fmt.Sprintf("%smain_%s.log", dirName, newFormat)
 	// os.dir

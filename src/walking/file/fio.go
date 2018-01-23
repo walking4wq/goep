@@ -94,27 +94,29 @@ func ReadLine(pathFile string, rejectLimit int, lf LineFn) (linCnt, errCnt int) 
 	return
 }
 
+type WriteDone func(string)
 type Writer struct {
 	maxCount, flushCnt int
 	currLine           uint64
 	maxDelay           time.Duration
 	pathFile           string
 	outputLine         chan string
-
-	log log.Logger
+	writeDone          WriteDone
+	log                log.Logger
 }
 
 const (
 	Cap4Channel = 1024 * 1024 // byte
 )
 
-func NewWriter(pathFile string, maxCount, flushCnt int, maxDelay time.Duration) (w *Writer) {
+func NewWriter(pathFile string, maxCount, flushCnt int, maxDelay time.Duration, writeDone WriteDone) (w *Writer) {
 	w = &Writer{
 		maxCount:   maxCount,
 		flushCnt:   flushCnt,
 		maxDelay:   maxDelay,
 		pathFile:   pathFile,
 		outputLine: make(chan (string), Cap4Channel),
+		writeDone:  writeDone,
 
 		log: log.New("rid", logext.RandId(8), "maxCount", maxCount, "flushCnt", flushCnt,
 			"maxDelay", maxDelay,
@@ -126,13 +128,19 @@ func NewWriter(pathFile string, maxCount, flushCnt int, maxDelay time.Duration) 
 			}},
 			"len4outputLine", log.Lazy{func() int {
 				return len(w.outputLine)
-			}},
+			}}, "writeDone", writeDone,
 		),
 	}
 	return
 }
 func (fw *Writer) Run() {
+	defer func() {
+		if fw.writeDone != nil {
+			fw.writeDone("")
+		}
+	}()
 	c := time.Tick(fw.maxDelay)
+	var pathFile string
 	var wf *os.File
 	var wfb *bufio.Writer
 	fileSeq, lineCnt := 0, 0
@@ -148,12 +156,15 @@ func (fw *Writer) Run() {
 						fw.log.Error("ending close file failure", "err", err)
 					}
 					// wf = nil
+					if fw.writeDone != nil {
+						fw.writeDone(pathFile)
+					}
 				}
 				goto endOfLoop // http://www.runoob.com/go/go-goto-statement.html
 			}
 			atomic.AddUint64(&fw.currLine, 1)
 			if wf == nil {
-				newWf, err := newFile(fw.pathFile, fileSeq)
+				pf, newWf, err := newFile(fw.pathFile, fileSeq)
 				if err != nil {
 					fw.log.Error("new file failure", "err", err)
 					wf = nil
@@ -163,6 +174,7 @@ func (fw *Writer) Run() {
 				fileSeq++
 				lineCnt = 0
 
+				pathFile = pf
 				wf = newWf
 				fw.log.Info("new file for output", "pathFile", wf.Name())
 			}
@@ -185,6 +197,9 @@ func (fw *Writer) Run() {
 					break
 				}
 				wf = nil
+				if fw.writeDone != nil {
+					fw.writeDone(pathFile)
+				}
 			} else if lineCnt%fw.flushCnt == 0 {
 				if err := wfb.Flush(); err != nil {
 					fw.log.Warn("flush file failure", "lineCnt", lineCnt, "err", err)
@@ -203,6 +218,9 @@ func (fw *Writer) Run() {
 					break
 				}
 				wf = nil
+				if fw.writeDone != nil {
+					fw.writeDone(pathFile)
+				}
 			} else {
 				fw.log.Trace("tick timeout and current output file is nil")
 			}
@@ -217,14 +235,15 @@ func (fw *Writer) Close() {
 	close(fw.outputLine)
 }
 
-func newFile(pathFile string, fileSeq int) (f *os.File, err error) {
-	suffix := strings.LastIndexByte(pathFile, '.')
+func newFile(path string, fileSeq int) (pathFile string, f *os.File, err error) {
+	suffix := strings.LastIndexByte(path, '.')
 	if suffix != -1 {
-		pathFile = fmt.Sprintf("%s.%d%s", pathFile[0:suffix], fileSeq, pathFile[suffix:])
+		pathFile = fmt.Sprintf("%s.%d%s", path[0:suffix], fileSeq, path[suffix:])
 	}
-	err = os.MkdirAll(filepath.Dir(pathFile), 0666)
+	err = os.MkdirAll(filepath.Dir(pathFile), 0777) // 0666)
 	if err != nil {
 		return
 	}
-	return os.Create(pathFile)
+	f, err = os.Create(pathFile)
+	return
 }

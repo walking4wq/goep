@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
 	"os"
+	"github.com/jlaffaye/ftp"
+	"net/textproto"
 )
 
 func init() {
@@ -67,7 +69,7 @@ func TestFio_Writer(t *testing.T) {
 	flushCnt := 4
 	maxDelay := time.Second * 10
 
-	fw := NewWriter(pathFile, maxCount, flushCnt, maxDelay)
+	fw := NewWriter(pathFile, maxCount, flushCnt, maxDelay, nil)
 	go fw.Run()
 	for i := 0; i < 15; i++ {
 		fw.Write(fmt.Sprintf("%d", i))
@@ -84,5 +86,60 @@ func TestFio_Writer(t *testing.T) {
 
 	if !IsExist(pathFile0) || !IsExist(pathFile1) {
 		t.Errorf("Not found file:%s,%s!", pathFile0, pathFile1)
+	}
+}
+func TestFio_Ftp(t *testing.T) {
+	// 10.45.51.101 root/root
+	addr := "10.45.51.101:22" // "localhost:21"
+	c, err := ftp.DialTimeout(addr, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// err = c.Login("anonymous", "anonymous")
+	err = c.Login("root", "root")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir, err := c.CurrentDir()
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Printf("[%v].CurrentDir:%s!", c, dir)
+
+	//err = c.ChangeDir("mysqlimport")
+	//if err != nil {
+	//	t.Error(err)
+	//}
+	//err = c.MakeDir(testDir)
+	//if err != nil {
+	//	t.Error(err)
+	//}
+	//data := bytes.NewBufferString(testData)
+	//err = c.Stor("test", data)
+	//if err != nil {
+	//	t.Error(err)
+	//}
+	//err = c.Rename("test", "tset")
+	//if err != nil {
+	//	t.Error(err)
+	//}
+
+	err = c.Logout()
+	if err != nil {
+		if protoErr := err.(*textproto.Error); protoErr != nil {
+			if protoErr.Code != ftp.StatusNotImplemented {
+				t.Error(err)
+			}
+		} else {
+			t.Error(err)
+		}
+	}
+
+	c.Quit()
+
+	err = c.NoOp()
+	if err == nil {
+		t.Error("Expected error")
 	}
 }

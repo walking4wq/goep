@@ -2,8 +2,8 @@ package cdr
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
+	"path/filepath"
 )
 
 /*
@@ -53,6 +53,8 @@ echo ") "
 type TAPIN struct {
 	record_type, cdr_file, imsi, imei, point_origin, point_target,
 	trans_dt, primary_units, searchno, originating_circle, first_cell_id string // []byte
+
+	seq int
 }
 
 func (_ TAPIN) NewEvent(line []byte, pathFile string, linCnt int) (evt *Event, row4err string) {
@@ -104,27 +106,37 @@ func (_ TAPIN) NewEvent(line []byte, pathFile string, linCnt int) (evt *Event, r
 		searchno = string(line[29-1:49])
 		originating_circle = "INDDL"
 	}
-	cdr_file = pathFile
-	t := &TAPIN{record_type, cdr_file, imsi, imei, point_origin, point_target,
-		trans_dt, primary_units, searchno, originating_circle, first_cell_id}
+	cdr_file = filepath.Base(pathFile)
+	t := &TAPIN{record_type, strings.Trim(cdr_file, " "), strings.Trim(imsi, " "), strings.Trim(imei, " "), strings.Trim(point_origin, " "), strings.Trim(point_target, " "),
+		strings.Trim(trans_dt, " "), strings.Trim(primary_units, " "), strings.Trim(searchno, " "), strings.Trim(originating_circle, " "), strings.Trim(first_cell_id, " "),
+		0}
 	// evt = t
 	var e Event = t
 	return &e, ""
 }
-func (t TAPIN) Reduce(evt *Event) (evts map[string][]*Event) { // reflect.Value.Type().String() // reflect.ValueOf(evt)
+
+// func (t TAPIN) Reduce(evt *Event) (evts map[string][]*Event) { // reflect.Value.Type().String() // reflect.ValueOf(evt)
+func (t TAPIN) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 	if evt == nil { // evt == nil then evts.Reduce output all cache
 		return
 	}
-	evts = make(map[string][]*Event, 1)
+	// evts = make(map[string][]*Event, 1)
+	// evts = make(map[string]*Event, 1)
+
 	// fmt.Println(reflect.ValueOf(*evt).Type().String())
 	// evts[reflect.ValueOf(*evt).Type().String()] = []*Event{
 	// evts["TAPIN"] = []*Event{
 	// tapin := (*evt).(TAPIN) // panic: interface conversion: cdr.Event is *cdr.TAPIN, not cdr.TAPIN
 	tapin := (*evt).(*TAPIN)
 	tapin.first_cell_id = strings.Replace(tapin.first_cell_id, " ", "X", -1)
-	evts[reflect.ValueOf(t).Type().String()] = []*Event{
-		evt,
-	}
+
+	// evts[reflect.ValueOf(t).Type().String()] = []*Event{
+	//evts[strconv.Itoa(t.seq)] = []*Event{
+	//	evt,
+	//}
+	// evts[strconv.Itoa(t.seq)] = evt
+	// t.seq++
+	sel = evt
 	return
 }
 func (evt TAPIN) ToDsv() string {
@@ -132,3 +144,5 @@ func (evt TAPIN) ToDsv() string {
 		evt.point_target + "," + evt.trans_dt + "," + evt.primary_units + "," + evt.searchno + "," +
 		evt.originating_circle + "," + evt.first_cell_id
 }
+
+func (evt TAPIN) Sql() (ddl, load string) { return }

@@ -27,7 +27,7 @@ window.onload = function () {
 	tpl.add(opt)
 	opt = document.createElement("option");
 	opt.text = "file_adapter"
-	opt.value = '/file_adapter?reject_limit=3&open_files=6&worker_count=4&root_path='
+	opt.value = '/file_adapter?reject_limit=3&open_files=6&worker_count=4&event_type=TAPIN|GroupMSC|GroupROAM|GroupINMA|GroupTAPIN&his_sub_path=his&warn_sub_path=warn&mysql_dns=xeexplore:xeexplore@tcp(10.45.51.101:3306)/xeexplore?allowAllFiles=true&mysql_tab=txe_inputkpi_record&mysql_load_tasks=2&root_path=../doc/tmp/ds/'
 	tpl.add(opt)
 	
 	tplOnChange()

@@ -9,6 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	logext "github.com/inconshreveable/log15/ext"
 	"io/ioutil"
+	"os/exec"
+	"fmt"
 )
 
 var log_ log.Logger
@@ -91,4 +93,105 @@ func Suffix(pathFile string, suffixSeparator byte) (suffix string) {
 		suffix = strings.ToUpper(pathFile)
 	}
 	return
+}
+
+func GetCurrentAbsPath() (string, error) {
+	file, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		return "", err
+	}
+	// # ./filepath
+	// exec.LookPath(./filepath):./filepath,<nil>
+	// filepath.Abs(./filepath):/root/wq/filepath,<nil>
+	// filepath.Dir(./filepath):.
+	// # /root/wq/filepath
+	// exec.LookPath(/root/wq/filepath):/root/wq/filepath,<nil>
+	// filepath.Abs(/root/wq/filepath):/root/wq/filepath,<nil>
+	// filepath.Dir(/root/wq/filepath):/root/wq
+	// # ../wq/filepath
+	// exec.LookPath(../wq/filepath):../wq/filepath,<nil>
+	// filepath.Abs(../wq/filepath):/root/wq/filepath,<nil>
+	// filepath.Dir(../wq/filepath):../wq
+	// return fmt.Sprintf("%s%c", filepath.Dir(file), os.PathSeparator), nil
+	abs, err := filepath.Abs(file)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s%c", filepath.Dir(abs), os.PathSeparator), nil
+
+	//path, err := filepath.Abs(file)
+	//if err != nil {
+	//	return ".", err
+	//}
+	//return path, nil
+	//i := strings.LastIndex(path, "/")
+	//if i < 0 {
+	//	i = strings.LastIndex(path, "\\")
+	//}
+	//if i < 0 {
+	//	return ".", errors.New(`error: Can't find "/" or "\".`)
+	//}
+	//return string(path[0: i+1]), nil
+}
+func Contains(rootDir, subDir string, check bool) (contains bool, err error) {
+	rootDirAbs, err := filepath.Abs(rootDir)
+	if err != nil {
+		// log_.Trace("Contains Abs(rootDir) error", "rootDir", rootDir, "rootDirAbs", rootDirAbs, "err", err)
+		// fmt.Printf("Contains(rootDir[%s],subDir[%s]) Abs(rootDir) error:%v\n", rootDir, subDir, err)
+		return false, err
+	}
+	if check {
+		if _, err = os.Stat(rootDirAbs); err != nil {
+			return false, err
+		}
+	}
+	// _, err = os.Stat(rootDir) // check the dir valid
+	subDirAbs, err := filepath.Abs(subDir)
+	if err != nil {
+		// log_.Trace("Contains Abs(subDir) error", "subDir", subDir, "subDirAbs", subDirAbs, "err", err)
+		// fmt.Printf("Contains(rootDir[%s],subDir[%s]) Abs(subDir) error:%v\n", rootDir, subDir, err)
+		return false, err
+	}
+	if check {
+		if _, err = os.Stat(subDirAbs); err != nil {
+			return false, err
+		}
+	}
+	//subDirAbsLen := len(subDirAbs)
+	//rootDirAbsLen := len(rootDirAbs)
+	//contains = subDirAbsLen > rootDirAbsLen && subDirAbs[0:rootDirAbsLen] == rootDirAbs
+	contains = strings.HasPrefix(subDirAbs, rootDirAbs)
+	//fmt.Printf("Contains(rootDir[%s]->[%s],subDir[%s]->[%s]) return %t\n",
+	//	rootDir, rootDirAbs, subDir, subDirAbs, contains)
+	log_.Trace("Contains executed", "rootDir", rootDir, "rootDirAbs", rootDirAbs, "subDir",
+		subDir, "subDirAbs", subDirAbs, "contains", contains)
+	return
+	// return fmt.Errorf("rootDir[%s] not contains subDir[%s]", rootDir, subDir)
+
+	//rfi, err := os.Stat(rootDir)
+	//if err != nil {
+	//	return err
+	//}
+	//if !rfi.IsDir() {
+	//	return fmt.Errorf("rootDir[%s] is not dir, cant contains subDir[%s]", rootDir, subDir)
+	//}
+	//sfi, err := os.Stat(subDir)
+	//if err != nil {
+	//	return err
+	//}
+	//// contains := false
+	//return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+	//	fmt.Printf("WalkFn(%s,%v,%v)\n", path, info, err)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if os.SameFile(sfi, info) {
+	//		// contains = true
+	//		// goto rtn
+	//		return filepath.SkipDir
+	//	}
+	//	return nil
+	//})
+	//// rtn:
+	//// return contains
 }

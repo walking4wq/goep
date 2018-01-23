@@ -6,6 +6,8 @@ type Event interface {
 	if input is over then evt is nil
 	if no output then evts is nil
 	 */
-	Reduce(evt *Event) (evts map[string][]*Event) // reflect.Value.Type().String() // reflect.ValueOf(evt)
+	// Reduce(evt *Event) (evts map[string][]*Event) // reflect.Value.Type().String() // reflect.ValueOf(evt)
+	Reduce(evt *Event) (sel *Event, grp map[string]*Event)
 	ToDsv() (data string)
+	Sql() (ddl, load string)
 }
