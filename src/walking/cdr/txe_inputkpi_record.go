@@ -190,7 +190,9 @@ func (_ GroupTAPIN) NewEvent(line []byte, pathFile string, linCnt int) (evt *Eve
 // func (t GroupMSC) Reduce(evt *Event) (evts map[string][]*Event) {
 func (t GroupMSC) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 	if evt == nil { // evt == nil then evts.Reduce output all cache
-		return nil, t.group
+		grp = t.group
+		t.group = nil
+		return
 	}
 	if t.group == nil {
 		t.group = make(map[string]*Event) // make(map[string][]*Event)
@@ -216,7 +218,9 @@ func (t GroupMSC) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 }
 func (t GroupROAM) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 	if evt == nil { // evt == nil then evts.Reduce output all cache
-		return nil, t.group
+		grp = t.group
+		t.group = nil
+		return
 	}
 	if t.group == nil {
 		t.group = make(map[string]*Event)
@@ -242,7 +246,9 @@ func (t GroupROAM) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 }
 func (t GroupINMA) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 	if evt == nil { // evt == nil then evts.Reduce output all cache
-		return nil, t.group
+		grp = t.group
+		t.group = nil
+		return
 	}
 	if t.group == nil {
 		t.group = make(map[string]*Event)
@@ -268,7 +274,9 @@ func (t GroupINMA) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 }
 func (t GroupTAPIN) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 	if evt == nil { // evt == nil then evts.Reduce output all cache
-		return nil, t.group
+		grp = t.group
+		t.group = nil
+		return
 	}
 	if t.group == nil {
 		t.group = make(map[string]*Event)

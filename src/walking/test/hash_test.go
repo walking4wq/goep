@@ -101,3 +101,18 @@ func TestHash_alg(tst *testing.T) {
 	fmt.Println("--- crc32 end and sha1 begin ---")
 	PrintHashCounter(m4sha1)
 }
+func hash(key string) int {
+	// http://blog.csdn.net/xcl168/article/details/43898807
+	return int(crc32.ChecksumIEEE([]byte(key)))
+}
+func TestHash_Determinism(tst *testing.T) {
+	key := "40455,3,MT3,,40455,"
+	rst := hash(key)
+	times := 100000
+	for i := 0; i < times; i++ {
+		rst2 := hash(key)
+		if rst != rst2 {
+			tst.Fatal("%08d>hash(%s)=%v but want %v", i, key, rst2, rst)
+		}
+	}
+}

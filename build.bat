@@ -13,3 +13,4 @@ go install -x walking/cmd/cdr_tapin
 
 rem go build -o bin/gofast.exe ./src/walking/cmd/gofast
 rem go test walking/svr -v -run="Json"
+rem go test walking/test -v -run="Chan" -bench=Chan_.Chan -benchmem

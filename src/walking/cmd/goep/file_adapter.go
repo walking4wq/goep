@@ -393,9 +393,16 @@ func (t *FileAdapter) Run() {
 	var wg4map sync.WaitGroup // go语言圣经#316
 	for i := 0; i < t.mapTasks; i++ { // 多线程Reduce导致出现多个同纬度的结果
 		wg4map.Add(1)
-		go func() { // map
+		go func(mapTaskIdx int) { // map
 			defer wg4map.Done()
 			var cache cdr.Event
+			//debugHash := make(map[string]int)
+			//defer func() {
+			//	t.log.Debug("debugHash", "len", len(debugHash), "mapTaskIdx", mapTaskIdx)
+			//	for k, v := range debugHash {
+			//		t.log.Debug("debugHash", "key", k, "value", v, "mapTaskIdx", mapTaskIdx)
+			//	}
+			//}()
 			for {
 				select {
 				case evt, ok := <-t.fileIn: // ok is true, evt == nil then evts.Reduce output all cache
@@ -407,7 +414,20 @@ func (t *FileAdapter) Run() {
 								t.selOut <- sel
 							}
 							for k, v := range grp {
-								reduceChannel[hash(k)%t.reduceTasks] <- v
+								h := hash(k)
+								idx := h % t.reduceTasks
+
+								reduceChannel[idx] <- v
+
+								// https://www.jianshu.com/p/9637c18d5f01
+								//dbgKey := fmt.Sprintf("[%s]->%d%%%d=%d", k, h, t.reduceTasks, idx)
+								//cnt, ok := debugHash[dbgKey]
+								//if !ok {
+								//	t.log.Debug("find new hash", "key", dbgKey, "mapTaskIdx", mapTaskIdx)
+								//	debugHash[dbgKey] = 1
+								//} else {
+								//	debugHash[dbgKey] = cnt + 1
+								//}
 							}
 							//if grp != nil && len(grp) > 0 {
 							//	 t.grpOut <- grp
@@ -415,12 +435,26 @@ func (t *FileAdapter) Run() {
 						} else { // the first loop
 							if evt != nil {
 								cache = *evt
+								cache.Reduce(nil) // clear cache
 								sel, grp := cache.Reduce(evt)
 								if sel != nil {
 									t.selOut <- sel
 								}
 								for k, v := range grp {
-									reduceChannel[hash(k)%t.reduceTasks] <- v
+									h := hash(k)
+									idx := h % t.reduceTasks
+
+									reduceChannel[idx] <- v
+
+									// https://www.jianshu.com/p/9637c18d5f01
+									//dbgKey := fmt.Sprintf("[%s]->%d%%%d=%d", k, h, t.reduceTasks, idx)
+									//cnt, ok := debugHash[dbgKey]
+									//if !ok {
+									//	t.log.Debug("find new hash", "key", dbgKey, "mapTaskIdx", mapTaskIdx)
+									//	debugHash[dbgKey] = 1
+									//} else {
+									//	debugHash[dbgKey] = cnt + 1
+									//}
 								}
 							} else {
 								t.log.Warn("fileIn channel received nil and evt as a handler is nil")
@@ -433,7 +467,20 @@ func (t *FileAdapter) Run() {
 								t.selOut <- sel
 							}
 							for k, v := range grp {
-								reduceChannel[hash(k)%t.reduceTasks] <- v
+								h := hash(k)
+								idx := h % t.reduceTasks
+
+								reduceChannel[idx] <- v
+
+								// https://www.jianshu.com/p/9637c18d5f01
+								//dbgKey := fmt.Sprintf("[%s]->%d%%%d=%d", k, h, t.reduceTasks, idx)
+								//cnt, ok := debugHash[dbgKey]
+								//if !ok {
+								//	t.log.Debug("find new hash", "key", dbgKey, "mapTaskIdx", mapTaskIdx)
+								//	debugHash[dbgKey] = 1
+								//} else {
+								//	debugHash[dbgKey] = cnt + 1
+								//}
 							}
 						}
 						// wg4map.Done()
@@ -445,7 +492,7 @@ func (t *FileAdapter) Run() {
 					//	}
 				}
 			}
-		}()
+		}(i)
 	}
 	//	closer
 	go func() {
@@ -459,18 +506,19 @@ func (t *FileAdapter) Run() {
 	var wg4red sync.WaitGroup
 	for i := 0; i < t.reduceTasks; i++ {
 		wg4red.Add(1)
-		go func(rc EventChannel) { // reduce
+		go func(reduceTaskIdx int) { // reduce
 			defer wg4red.Done()
 			var cache cdr.Event
 			for {
 				select {
-				case evt, ok := <-rc:
+				case evt, ok := <-reduceChannel[reduceTaskIdx]:
 					// fmt.Printf("%v, %v := <-t.evts:", evt, ok)
 					if ok {
+						// t.log.Debug("reduceChannel received", "evt", (*evt).ToDsv(), "reduceTaskIdx", reduceTaskIdx)
 						if cache != nil {
 							sel, grp := cache.Reduce(evt)
 							if sel != nil {
-								t.grpOut <- sel
+								t.selOut <- sel
 							}
 							for _, v := range grp {
 								t.grpOut <- v
@@ -478,9 +526,10 @@ func (t *FileAdapter) Run() {
 						} else { // the first loop
 							if evt != nil {
 								cache = *evt
+								cache.Reduce(nil) // clear cache
 								sel, grp := cache.Reduce(evt)
 								if sel != nil {
-									t.grpOut <- sel
+									t.selOut <- sel
 								}
 								for _, v := range grp {
 									t.grpOut <- v
@@ -493,10 +542,11 @@ func (t *FileAdapter) Run() {
 						if cache != nil {
 							sel, grp := cache.Reduce(nil)
 							if sel != nil {
-								t.grpOut <- sel
+								t.selOut <- sel
 							}
 							for _, v := range grp {
 								t.grpOut <- v
+								// t.log.Debug("reduce output", "v", (*v).ToDsv(), "reduceTaskIdx", reduceTaskIdx)
 							}
 						}
 						// wg4red.Done()
@@ -504,7 +554,7 @@ func (t *FileAdapter) Run() {
 					}
 				}
 			}
-		}(reduceChannel[i])
+		}(i)
 	}
 	//	closer
 	go func() {
