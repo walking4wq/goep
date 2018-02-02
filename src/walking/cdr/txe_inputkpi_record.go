@@ -211,6 +211,7 @@ func (t GroupMSC) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 			t2.records = 1
 		}
 		t2.oper_date = time.Now().Local()
+		t2.service_time = time.Now().Local()
 		var e Event = t2
 		t.group[t2.Key()] = &e // []*Event{&e}
 	}
@@ -239,6 +240,7 @@ func (t GroupROAM) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 			t2.records = 1
 		}
 		t2.oper_date = time.Now().Local()
+		t2.service_time = time.Now().Local()
 		var e Event = t2
 		t.group[t2.Key()] = &e
 	}
@@ -267,6 +269,7 @@ func (t GroupINMA) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 			t2.records = 1
 		}
 		t2.oper_date = time.Now().Local()
+		t2.service_time = time.Now().Local()
 		var e Event = t2
 		t.group[t2.Key()] = &e
 	}
@@ -295,6 +298,7 @@ func (t GroupTAPIN) Reduce(evt *Event) (sel *Event, grp map[string]*Event) {
 			t2.records = 1
 		}
 		t2.oper_date = time.Now().Local()
+		t2.service_time = time.Now().Local()
 		var e Event = t2
 		t.group[t2.Key()] = &e
 	}

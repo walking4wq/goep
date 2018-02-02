@@ -40,7 +40,7 @@ func init() {
 	//	path := fmt.Sprintf("%smain_%s.log", dirname, newFormat)
 	path := "../../../log/file_test.log"
 	// os.dir
-	h := log.CallerStackHandler("%+v", log.FailoverHandler(
+	h := log.CallerStackHandler("%+v", log.MultiHandler( // log.FailoverHandler(
 		// D:/coding/ztesoft/blockchain/ethereum/geth/go_get_github/src/github.com/ethereum/go-ethereum/log/handler.go:222
 		// log.Must.NetHandler("tcp", ":9090", log.JsonFormat()),
 		log.Must.FileHandler(path, log.LogfmtFormat()), // LogfmtFormat
@@ -128,5 +128,20 @@ func TestDir_Util(t *testing.T) {
 			t.Error("Contains(rootDir, subDir) return flag but want contains",
 				"idx", idx, "rootDir", dir.rootDir, "subDir", dir.subDir, "flag", flag, "contains", dir.contains)
 		}
+	}
+}
+
+func TestDir_BackupDir(t *testing.T) {
+	src := "../../../test_data/output/_file_adapter-20171225114532"
+	//abs, err := filepath.Abs(src)
+	//log.Info("filepath.Abs(src)", "src", src, "rtn", abs, "err", err)
+	//inf, err := os.Stat(src)
+	//log.Info("os.Stat(src)", "src", src, "rtn", inf, "err", err)
+	dest := "../../../test_data/bkup"
+	err := BackupDir(src, dest)
+	if err != nil {
+		t.Fatalf("BackupDir(%s,%s) err:%v", src, dest, err)
+	} else {
+		log.Info("BackupDir(src,dest) ok", "src", src, "dest", dest)
 	}
 }

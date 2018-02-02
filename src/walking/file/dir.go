@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"fmt"
+	"path"
+	"time"
 )
 
 var log_ log.Logger
@@ -194,4 +196,51 @@ func Contains(rootDir, subDir string, check bool) (contains bool, err error) {
 	//})
 	//// rtn:
 	//// return contains
+}
+
+func BackupDir(src, dest string) error { // Rename
+	//if !IsExist(src) {
+	//	return fmt.Errorf("MvDir(src:%s, dest:%s) not found src", src, dest)
+	//}
+	dir, err := ioutil.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("BackupDir(src:%s, dest:%s) read src err:%v", src, dest, err)
+	}
+	if !IsExist(dest) {
+		err := os.MkdirAll(dest, 0777)
+		if err != nil {
+			return fmt.Errorf("BackupDir(src:%s, dest:%s) create dest err:%v", src, dest, err)
+		}
+	}
+	backupPath := fmt.Sprintf("%s%c%s", path.Base(src), '_', time.Now().Local().Format("20060102150405")) // ("2006-01-02 15:04:05.000")
+	newDest := fmt.Sprintf("%s%c%s", dest, os.PathSeparator, backupPath)
+	err = os.MkdirAll(newDest, 0777)
+	if err != nil {
+		return fmt.Errorf("BackupDir(src:%s, dest:%s) create newDest[%s] err:%v", src, dest, newDest, err)
+	}
+
+	for _, fi := range dir {
+		oldPath := fmt.Sprintf("%s%c%s", src, os.PathSeparator, fi.Name())
+		newPath := fmt.Sprintf("%s%c%s", newDest, os.PathSeparator, fi.Name())
+		log_.Trace("BackupDir rename", "oldPath", oldPath, "newPath", newPath)
+		if err = os.Rename(oldPath, newPath); err != nil {
+			return fmt.Errorf("BackupDir(src:%s, dest:%s) os.Rename(oldPath:%s, newPath:%s) err:%v",
+				src, dest, oldPath, newPath, err)
+		}
+	}
+
+	return nil
+	//return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+	//	if err != nil {
+	//		return err
+	//	}
+	//	//if info.IsDir() {
+	//	//	return os.Rename(path, dest)
+	//	//} else {
+	//	//
+	//	//}
+	//	log_.Trace("MvDir rename", "src", src, "dest", dest, "path", path)
+	//	// return os.Rename(path, dest)
+	//	return nil
+	//})
 }

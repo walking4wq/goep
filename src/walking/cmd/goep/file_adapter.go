@@ -366,7 +366,8 @@ func (t *FileAdapter) Run() {
 			//if err != nil {
 			//	goto rm
 			//}
-			err := os.Rename(t.rootPath, hisPath)
+			// err := os.Rename(t.rootPath, hisPath)
+			err := file.BackupDir(t.rootPath, hisPath)
 			if err != nil {
 				goto rm
 			}
