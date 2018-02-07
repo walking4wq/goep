@@ -675,7 +675,9 @@ func (t *FileAdapter) Run() {
 			w.Close()
 		}
 		wg4done.Wait()
-		close(writeDone)
+		if writeDone != nil { // panic: close of nil channel
+			close(writeDone)
+		}
 	}()
 	if writeDone != nil {
 		//go func() {
